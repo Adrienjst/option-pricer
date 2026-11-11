@@ -128,3 +128,54 @@ def implied_vol(market_price, S, K, r, q, T, kind):
         if np.isnan(implied_sigma):
             implied_sigma = iv_bisection(market_price, S, K, r, q, T, kind, lo=1e-4, hi=5.0, tol=1e-8, max_iter=200)[0]
         return implied_sigma
+
+obs_times = np.array([0.5, 1.0, 1.5, 2.0])
+coupon, autocall_b, coupon_b, protect_b = 4.0, 1.00, 0.70, 0.60
+
+def simulate_paths(S0, r, q, sigma, T, n_steps, n_paths, seed):
+    rng = np.random.default_rng(seed)
+    delta_T = T/n_steps
+    simulation = rng.normal(0, 1,(n_paths, n_steps))
+    price_T = S0*np.exp(np.cumsum((r-q-0.5*(sigma**2))*delta_T+sigma*np.sqrt(delta_T)*simulation, axis=1))
+    paths = np.full((n_paths, n_steps + 1), S0, float)
+    paths[:,1:] = price_T
+    return paths
+
+def mc_call(paths, K, r, T):
+    call_payoff = np.exp(-r*T)*np.maximum(paths[:,-1]-K, 0)
+    price = np.mean(call_payoff)
+    std_error = np.std(call_payoff)/np.sqrt(len(paths))
+    return (price, std_error)
+
+def phoenix_pv(perf, coupon, autocall_b, coupon_b, protect_b, r, obs_times, notional=100):
+    missed=0
+    pay=0
+
+    for i in range(len(obs_times)):
+        if perf[i] >= coupon_b:
+            pay += coupon*(missed+1)*np.exp(-r*(obs_times[i]))
+            missed=0
+        else:
+            missed+=1
+        
+        if i < len(obs_times) - 1 and perf[i] >= autocall_b:
+            pay += notional*np.exp(-r*(obs_times[i]))
+            return pay
+        
+    if perf[-1]>=protect_b:
+        pay += notional*np.exp(-r*(obs_times[i]))
+        return pay
+    else:
+        pay += (notional*perf[i])*np.exp(-r*(obs_times[i]))
+        return pay
+
+def price_phoenix(S0, r, q, sigma, n_paths, seed):
+
+    paths = simulate_paths(S0, r, q, sigma, obs_times[-1], len(obs_times), n_paths, seed)
+    paths_pv = []
+    for i in range(n_paths):
+        paths_pv.append(phoenix_pv(paths[i, 1:]/S0, coupon, autocall_b, coupon_b, protect_b, r, obs_times,notional=100) ) 
+
+    price = np.mean(paths_pv)
+    std_error = np.std(paths_pv) / np.sqrt(len(paths_pv))
+    return (price, std_error)
