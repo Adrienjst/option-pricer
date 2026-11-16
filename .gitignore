@@ -14,5 +14,5 @@ venv/
 .vscode/
 .idea/
 
-# Private notes for Claude
+# Local notes
 CLAUDE.md

@@ -56,6 +56,10 @@ Each check compares my code with something independent of it:
 - The Phoenix terms (dates, coupon, barriers) are fixed at the top of `pricer.py`, and `price_phoenix` assumes evenly spaced observation dates.
 - `T` and `sigma` must be strictly positive: the formulas divide by `sigma * sqrt(T)`, so the pricer refuses expiry-day and zero-volatility inputs rather than guessing.
 
+## How I built it
+
+Built with an AI tutor (Claude) for explanations and code review; the code is mine, and every result is checked against a closed form or a hand calculation.
+
 ## Roadmap
 
 - **Automated test file and demo notebook** with charts (gamma error vs bump size, volatility smile, Newton convergence). Next.
